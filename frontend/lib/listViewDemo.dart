@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
-import 'newPage.dart';
 import 'contact.dart';
+import 'newPage.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-// Q: Why create a StatefulWidget instead of StatelessWidget?
-// A: This widget needs to:
-// 1. Fetch data asynchronously from an API
-// 2. Manage loading state
-// 3. Maintain a list of places in state
-// 4. Rebuild UI when data changes
 class ListViewDemo extends StatefulWidget {
   const ListViewDemo({super.key});
 
@@ -18,14 +12,23 @@ class ListViewDemo extends StatefulWidget {
 }
 
 class _ListViewDemoState extends State<ListViewDemo> {
-  // Q: Why use List<Map<String, dynamic>> instead of a typed model class?
-  // A: Using a typed model (class Destination) would be better for:
-  // 1. Type safety and compile-time checks
-  // 2. Better IDE support (autocomplete, refactoring)
-  // 3. Cleaner code with named constructors fromJson/toJson
-  // 4. Easier maintenance as the data structure evolves
   List<Map<String, dynamic>> places = [];
   bool isLoading = true;
+  int selectedCategory = 0;
+  final List<String> categories = [
+    'Hotels',
+    'Flights',
+    'Vacation',
+    'Car',
+    'Activities',
+  ];
+  final List<IconData> categoryIcons = [
+    Icons.hotel,
+    Icons.flight,
+    Icons.beach_access,
+    Icons.directions_car,
+    Icons.local_activity,
+  ];
 
   @override
   void initState() {
@@ -33,43 +36,30 @@ class _ListViewDemoState extends State<ListViewDemo> {
     fetchDestinations();
   }
 
-  // Q: Why call API in initState instead of using FutureBuilder?
-  // A: initState approach is good when:
-  // 1. You need to control the loading state precisely
-  // 2. You want to cache the data for the widget's lifetime
-  // 3. You need to handle errors with custom UI
-  // FutureBuilder is simpler but offers less control
   Future<void> fetchDestinations() async {
     try {
       final response = await http.get(
         Uri.parse("http://localhost:5000/api/destinations"),
       );
 
-      // Q: Why check status code 200? What about other success codes?
-      // A: REST APIs typically use 200 for GET success. However, best practice is to check:
-      // if (response.statusCode >= 200 && response.statusCode < 300)
-      // This handles 200, 201, 204, etc.
       if (response.statusCode == 200) {
-        // Q: Why parse as List<dynamic> first?
-        // A: json.decode returns dynamic, and we need to cast it to List
-        // This approach assumes the API always returns a list
         final List data = json.decode(response.body);
 
         setState(() {
-          // Q: Why use map with fallback values?
-          // A: This provides resilience against missing/null data from the API
-          // Prevents app crashes if the API response structure changes
           places = data
               .map(
                 (item) => {
                   "id": item["id"],
-                  "country":
-                      item["country"] ?? "Unknown", // Null-aware operator
-                  "price":
-                      item["price"]?.toString() ?? "0", // Convert to string
+                  "country": item["country"] ?? "Unknown",
+                  "price": item["price"]?.toString() ?? "0",
                   "image":
                       item["image_url"] ??
-                      "https://picsum.photos/seed/default/500/500.jpg", // Fallback image
+                      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&auto=format&fit=crop",
+                  "rating": (item["rating"] ?? 4.5).toDouble(),
+                  "reviews": item["reviews"] ?? 120,
+                  "category": item["category"] ?? "Beach",
+                  "distance": item["distance"] ?? "2.3 km from center",
+                  "amenities": ["WiFi", "Pool", "Breakfast", "Parking"],
                 },
               )
               .toList();
@@ -77,193 +67,610 @@ class _ListViewDemoState extends State<ListViewDemo> {
         });
       } else {
         setState(() => isLoading = false);
-        // Q: Should we show this error to the user?
-        // A: Yes, but not as a raw exception. Better to show a user-friendly message
-        // and log the technical details for debugging
-        throw Exception("Failed to load destinations");
       }
     } catch (e) {
       setState(() => isLoading = false);
-      // Q: Why print instead of showing to user?
-      // A: Printing is for debugging. In production, consider:
-      // 1. Logging to analytics/crash reporting service
-      // 2. Showing a user-friendly error message with retry option
-      print("Error fetching destinations: $e");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Q: What's the purpose of extendBodyBehindAppBar?
-      // A: Makes the AppBar transparent so the gradient background shows through
-      // Creates a modern, immersive design
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0, // Remove shadow for clean look
-        title: const Padding(
-          padding: EdgeInsets.only(top: 8),
-          child: Text(
-            'Travel Destinations',
-            style: TextStyle(
-              fontSize: 21,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          // Q: Why use IconButton with empty onPressed?
-          // A: This creates a placeholder for future functionality
-          // Better: Remove or disable if not functional yet
-          IconButton(
-            icon: const Icon(Icons.airplanemode_active, color: Colors.white),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.contact_page, color: Colors.white),
-            onPressed: () {
-              // Q: Why use MaterialPageRoute instead of named routes?
-              // A: MaterialPageRoute is fine for simple navigation
-              // Named routes are better for:
-              // 1. Centralized route management
-              // 2. Deep linking support
-              // 3. Type-safe navigation with arguments
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ContactPage()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF5D54A4), Color(0xFF9A57BD), Color(0xFFF28EC4)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.only(top: 90),
-          // Q: Why use top: 90 padding?
-          // A: Creates space below the AppBar so content doesn't get hidden
-          // Should be responsive: MediaQuery.of(context).padding.top + kToolbarHeight
-          child: isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
-                )
-              : ListView.separated(
-                  // Q: Why ListView.separated instead of ListView.builder?
-                  // A: ListView.separated automatically adds separators between items
-                  // More efficient than adding SizedBox widgets manually in itemBuilder
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 10,
-                  ),
-                  itemCount: places.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 18),
-                  itemBuilder: (context, index) {
-                    return _buildPlaceTile(context, places[index]);
-                  },
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // iOS Style App Bar
+            SliverAppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              floating: false,
+              pinned: true,
+              expandedHeight: 80,
+              flexibleSpace: FlexibleSpaceBar(
+                collapseMode: CollapseMode.pin,
+                titlePadding: const EdgeInsets.only(left: 16, bottom: 10),
+                title: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF003B95),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.explore,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Travel.com',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF003B95),
+                          ),
+                        ),
+                        Text(
+                          'Find your perfect stay',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-        ),
-      ),
-    );
-  }
-
-  // Q: Why extract tile building to a separate method?
-  // A: Improves code readability, reduces build method complexity, and makes tile reusable
-  Widget _buildPlaceTile(BuildContext context, Map<String, dynamic> place) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.20), // Semi-transparent white
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.35),
-        ), // Subtle border
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 6,
-            offset: const Offset(1, 2), // Creates depth
-          ),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 12,
-        ),
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Image.network(
-            place["image"],
-            width: 58,
-            height: 58,
-            fit: BoxFit.cover,
-            // Q: What about error handling for failed image loads?
-            // A: Should add errorBuilder parameter:
-            // errorBuilder: (context, error, stackTrace) => Icon(Icons.error)
-            // Or use CachedNetworkImage package for better performance
-          ),
-        ),
-        title: Text(
-          place["country"],
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        subtitle: Text(
-          "Price: \$${place["price"]}",
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.white70, // 70% opacity for subtlety
-          ),
-        ),
-        trailing: const Icon(
-          Icons.arrow_forward_ios,
-          size: 18,
-          color: Colors.white70,
-        ),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  NewPage(destinationId: place["id"], title: place["country"]),
+              ),
+              actions: [
+                IconButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ContactPage()),
+                    );
+                  },
+                  icon: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.person_outline,
+                      color: Colors.black,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          );
-        },
+
+            // Search Section
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // Search Bar
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 12),
+                              Icon(
+                                Icons.search,
+                                color: Colors.grey.shade600,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  decoration: InputDecoration(
+                                    hintText: 'Where are you going?',
+                                    hintStyle: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 16,
+                                    ),
+                                    border: InputBorder.none,
+                                  ),
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                              ),
+                              Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF003B95),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.tune,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Quick Filters
+                      SizedBox(
+                        height: 100,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          itemCount: categories.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              child: Column(
+                                children: [
+                                  Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      color: selectedCategory == index
+                                          ? const Color(
+                                              0xFF003B95,
+                                            ).withOpacity(0.1)
+                                          : Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(15),
+                                      border: Border.all(
+                                        color: selectedCategory == index
+                                            ? const Color(0xFF003B95)
+                                            : Colors.transparent,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      categoryIcons[index],
+                                      color: selectedCategory == index
+                                          ? const Color(0xFF003B95)
+                                          : Colors.grey.shade700,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    categories[index],
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: selectedCategory == index
+                                          ? const Color(0xFF003B95)
+                                          : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Trending Section
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Trending Destinations',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {},
+                      child: const Text(
+                        'See all',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF003B95),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Loading State
+            if (isLoading)
+              SliverFillRemaining(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        color: const Color(0xFF003B95),
+                        strokeWidth: 1.5,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Finding best stays...',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              // Destinations Grid
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 1,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 0,
+                    childAspectRatio: 1.2,
+                  ),
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final place = places[index];
+                    return _buildDestinationCard(context, place);
+                  }, childCount: places.length),
+                ),
+              ),
+
+            // Bottom Padding
+            const SliverToBoxAdapter(child: SizedBox(height: 80)),
+          ],
+        ),
+      ),
+
+      // Bottom Navigation Bar (iOS Style)
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: Colors.grey.shade200, width: 1),
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(Icons.search, 'Explore', true),
+                _buildNavItem(Icons.favorite_border, 'Saved', false),
+                _buildNavItem(Icons.receipt, 'Bookings', false),
+                _buildNavItem(Icons.notifications_none, 'Alerts', false),
+                _buildNavItem(Icons.person_outline, 'Profile', false),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  // Q: What about pull-to-refresh functionality?
-  // A: Consider adding RefreshIndicator for better UX:
-  // Wrap ListView.separated with RefreshIndicator(onRefresh: fetchDestinations)
+  Widget _buildNavItem(IconData icon, String label, bool isActive) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          color: isActive ? const Color(0xFF003B95) : Colors.grey.shade600,
+          size: 22,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: isActive ? const Color(0xFF003B95) : Colors.grey.shade600,
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
+  }
 
-  // Q: What about empty state handling?
-  // A: Add condition: if (places.isEmpty && !isLoading) show "No destinations available"
+  Widget _buildDestinationCard(
+    BuildContext context,
+    Map<String, dynamic> place,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                NewPage(destinationId: place["id"], title: place["country"]),
+          ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 10,
+              spreadRadius: 2,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image with multiple badges
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+              child: Stack(
+                children: [
+                  Image.network(
+                    place["image"],
+                    width: double.infinity,
+                    height: 180,
+                    fit: BoxFit.cover,
+                  ),
 
-  // Q: Should we add dispose method?
-  // A: Not needed here since we don't have controllers or streams
-  // But good practice to cancel any pending async operations if needed
+                  // Top badges
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF003B95),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'Genius Deal',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
 
-  // PRODUCTION IMPROVEMENTS:
-  // 1. Implement error state UI with retry button
-  // 2. Add pull-to-refresh with RefreshIndicator
-  // 3. Use Image.network with errorBuilder and loadingBuilder
-  // 4. Implement pagination for large datasets
-  // 5. Add search/filter functionality
-  // 6. Cache API responses for offline support
-  // 7. Use a state management solution for shared data
-  // 8. Add analytics for item taps
-  // 9. Implement proper null safety throughout
-  // 10. Use responsive design for different screen sizes
+                  // Rating badge
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.star,
+                            size: 14,
+                            color: Color(0xFF003B95),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            place["rating"].toString(),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            ' (${place["reviews"]})',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Distance badge at bottom
+                  Positioned(
+                    bottom: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: 12,
+                            color: Colors.grey.shade700,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            place["distance"],
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Hotel Name and Price
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          place["country"],
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '\$${place["price"]}',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF003B95),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Category and location
+                  Text(
+                    '${place["category"]} Hotel • Central location',
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Amenities
+                  Row(
+                    children: [
+                      Icon(Icons.wifi, size: 16, color: Colors.grey.shade600),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Free WiFi',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(Icons.pool, size: 16, color: Colors.grey.shade600),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Pool',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(
+                        Icons.free_breakfast,
+                        size: 16,
+                        color: Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Breakfast',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Book button
+                  Container(
+                    width: double.infinity,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF003B95),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'View Deal',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

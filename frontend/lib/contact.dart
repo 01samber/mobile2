@@ -1,14 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:animations/animations.dart';
 
-// Q: Why separate into StatefulWidget vs StatelessWidget?
-// A: ContactPage needs to maintain form state (text controllers, loading state, validation).
-// StatefulWidget is necessary when the widget needs to:
-// 1. Manage form input state
-// 2. Track loading/error states
-// 3. Handle asynchronous operations (API calls)
-// 4. Respond to user interactions with state changes
 class ContactPage extends StatefulWidget {
   const ContactPage({super.key});
 
@@ -17,40 +11,18 @@ class ContactPage extends StatefulWidget {
 }
 
 class _ContactPageState extends State<ContactPage> {
-  // Q: Why use GlobalKey for the form?
-  // A: GlobalKey allows us to access FormState from anywhere in the widget tree.
-  // This enables programmatic validation (.validate()) and state management.
-  // Alternative: Using Form.of(context) with Builder widget, but GlobalKey is more direct.
-  final _formKey = GlobalKey<FormState>();
-
-  // Q: Why use TextEditingController instead of onChanged callbacks?
-  // A: TextEditingController provides more control:
-  // 1. Programmatic text manipulation (clear, set text)
-  // 2. Listen to text changes without rebuilding entire widget
-  // 3. Better separation of concerns (business logic from UI)
-  // Important: Always dispose controllers to prevent memory leaks
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
-
   bool isLoading = false;
+  final _formKey = GlobalKey<FormState>();
 
-  // Q: Why make this function async instead of using callbacks?
-  // A: async/await provides cleaner, more readable code for sequential operations.
-  // It avoids "callback hell" and makes error handling more straightforward with try/catch.
   Future<void> sendMessage() async {
-    // Q: Why validate before API call?
-    // A: Client-side validation reduces unnecessary API calls and provides
-    // immediate feedback to users. Server should still validate for security.
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
 
     try {
-      // Q: Why hardcode localhost URL? What about production?
-      // A: This should be configurable via environment variables or a config file.
-      // In production, use a base URL constant or dependency injection.
-      // Consider: const String baseUrl = "https://api.yourdomain.com";
       final response = await http.post(
         Uri.parse("http://localhost:5000/api/contact"),
         headers: {"Content-Type": "application/json"},
@@ -63,198 +35,379 @@ class _ContactPageState extends State<ContactPage> {
 
       setState(() => isLoading = false);
 
-      // Q: Why check status code 200? What about other success codes?
-      // A: REST APIs may return 200 (OK), 201 (Created), or 204 (No Content).
-      // Best practice: Check for response.statusCode >= 200 && response.statusCode < 300
       if (response.statusCode == 200) {
-        // Q: Why use ScaffoldMessenger instead of showDialog?
-        // A: ScaffoldMessenger provides temporary, non-blocking notifications.
-        // SnackBars are better for success/error messages that don't require user action.
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Message sent successfully!"),
-            backgroundColor: Colors.green,
-          ),
-        );
+        _showSuccessDialog();
         _nameController.clear();
         _emailController.clear();
         _messageController.clear();
       } else {
-        // Q: What about parsing error messages from the server?
-        // A: The server may return specific error messages in the response body.
-        // Consider: json.decode(response.body)['error'] for more detailed feedback.
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Failed to send message."),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorDialog('Failed to send message');
       }
     } catch (e) {
       setState(() => isLoading = false);
-      // Q: What types of exceptions can occur here?
-      // A: Network errors (SocketException), JSON encoding errors, timeout errors.
-      // Consider: Implement retry logic or more specific error handling.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-      );
+      _showErrorDialog('Network error occurred');
     }
   }
 
-  // Q: Should we override dispose() to clean up controllers?
-  // A: YES! Always dispose controllers to prevent memory leaks.
-  // Add: @override void dispose() { _nameController.dispose(); ... super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      // Q: What does extendBodyBehindAppBar do?
-      // A: It makes the AppBar transparent and allows the body content to extend behind it.
-      // This creates a modern, immersive UI design.
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0, // Removes shadow for cleaner look
-        title: const Padding(
-          padding: EdgeInsets.only(top: 8),
-          child: Text(
-            "Contact Us",
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Container(
-        // Q: Why use gradient instead of solid color?
-        // A: Gradients provide visual depth and modern aesthetics.
-        // Performance consideration: Gradients are GPU-accelerated and perform well.
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF5D54A4), // Purple
-              Color(0xFF9A57BD), // Magenta
-              Color(0xFFF28EC4), // Pink
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        // Q: Why use specific padding values?
-        // A: top: 120 accounts for AppBar height + extra space.
-        // This ensures content doesn't hide behind AppBar while maintaining visual hierarchy.
-        padding: const EdgeInsets.fromLTRB(24, 120, 24, 24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              _buildTextField(_nameController, "Name", TextInputType.text),
-              const SizedBox(height: 20), // Consistent spacing
-              _buildTextField(
-                _emailController,
-                "Email",
-                TextInputType.emailAddress,
+  void _showSuccessDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(30),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 30,
+                spreadRadius: 5,
               ),
-              const SizedBox(height: 20),
-              _buildTextField(
-                _messageController,
-                "Message",
-                TextInputType.multiline,
-                maxLines: 5,
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.green.shade50,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF4ADE80), Color(0xFF22C55E)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  color: Colors.white,
+                  size: 50,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Message Sent!',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Our team will get back to you within 24 hours',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
               ),
               const SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: isLoading ? null : sendMessage,
-                // Q: Why disable button during loading?
-                // A: Prevents duplicate submissions and gives visual feedback that action is in progress.
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.pinkAccent,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 50,
-                    vertical: 18,
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+                  child: const Text(
+                    'Continue Exploring',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
-                  elevation: 12, // Shadow for depth
                 ),
-                child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        "Send Message",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  // Q: Why extract TextFormField into a separate method?
-  // A: Reduces code duplication, improves maintainability, and ensures consistent styling.
-  // This is a common pattern for reusable form fields.
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label,
-    TextInputType type, {
-    int maxLines = 1,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: type,
-      maxLines: maxLines,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(
-          color: Colors.white70,
-        ), // 70% opacity for subtlety
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.18), // Semi-transparent white
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide.none, // Removes default border
-        ),
-      ),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return "$label cannot be empty";
-        }
-        // Q: What about additional validation for email field?
-        // A: Should add email format validation using regex or validator package.
-        // Example for email: if (!EmailValidator.validate(value)) return "Invalid email";
-        return null;
+        );
       },
     );
   }
 
-  // MISSING DISPOSE METHOD - IMPORTANT FOR PRODUCTION:
-  // @override
-  // void dispose() {
-  //   _nameController.dispose();
-  //   _emailController.dispose();
-  //   _messageController.dispose();
-  //   super.dispose();
-  // }
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Oops!'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Try Again'),
+          ),
+        ],
+      ),
+    );
+  }
 
-  // IMPROVEMENTS FOR PRODUCTION:
-  // 1. Add email format validation
-  // 2. Implement form state persistence (auto-save drafts)
-  // 3. Add character counters for message field
-  // 4. Implement debouncing for button presses
-  // 5. Use a state management solution (Provider, Riverpod, Bloc) for complex forms
-  // 6. Add accessibility labels and semantics
-  // 7. Implement theme-aware colors (Theme.of(context).colorScheme)
-  // 8. Add internationalization (i18n) support
-  // 9. Implement proper error handling with retry options
-  // 10. Add analytics for form submissions
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.grey.shade800,
+          ),
+        ),
+        title: const Text(
+          'Contact Us',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            color: Colors.black87,
+          ),
+        ),
+      ),
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              // Hero Image
+              Container(
+                height: 200,
+                margin: const EdgeInsets.only(bottom: 30),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.secondary,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.3),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: 20,
+                      bottom: 20,
+                      child: Icon(
+                        Icons.support_agent_rounded,
+                        color: Colors.white.withOpacity(0.8),
+                        size: 80,
+                      ),
+                    ),
+                    const Positioned(
+                      left: 20,
+                      bottom: 20,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '24/7 Support',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'We\'re always here to help you',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Form Fields
+              _buildTextField(
+                _nameController,
+                'Full Name',
+                Icons.person_2_rounded,
+                (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildTextField(
+                _emailController,
+                'Email Address',
+                Icons.email_rounded,
+                (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildTextField(
+                _messageController,
+                'Your Message',
+                Icons.message_rounded,
+                (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your message';
+                  }
+                  if (value.length < 10) {
+                    return 'Message should be at least 10 characters';
+                  }
+                  return null;
+                },
+                maxLines: 5,
+              ),
+              const SizedBox(height: 40),
+
+              // Submit Button
+              OpenContainer(
+                closedElevation: 0,
+                closedColor: Colors.transparent,
+                closedBuilder: (context, action) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primary,
+                          Theme.of(context).colorScheme.secondary,
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withOpacity(0.4),
+                          blurRadius: 15,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: isLoading ? null : sendMessage,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 20,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (isLoading)
+                            const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          else
+                            const Icon(Icons.send_rounded, size: 20),
+                          const SizedBox(width: 12),
+                          Text(
+                            isLoading ? 'Sending...' : 'Send Message',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                openBuilder: (context, action) {
+                  return const SizedBox(); // Empty for animation only
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    IconData icon,
+    FormFieldValidator<String>? validator, {
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(
+          color: Colors.grey.shade600,
+          fontWeight: FontWeight.w500,
+        ),
+        prefixIcon: Icon(icon, color: Theme.of(context).colorScheme.primary),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.primary,
+            width: 2,
+          ),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 18,
+        ),
+      ),
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+        color: Colors.black87,
+      ),
+    );
+  }
 }
