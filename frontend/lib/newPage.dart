@@ -1,41 +1,51 @@
-import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:animations/animations.dart';
+// Start: Imports
+import 'package:flutter/material.dart'; // Flutter Material Design widgets
+import 'dart:convert'; // JSON decoding for API responses
+import 'package:http/http.dart' as http; // HTTP package for REST API requests
+import 'package:animations/animations.dart'; // Provides OpenContainer for smooth transitions
+// End: Imports
 
+// Start: NewPage Widget (Stateful because it has dynamic state like selected hotel)
 class NewPage extends StatefulWidget {
-  final int destinationId;
-  final String title;
+  final int destinationId; // ID of the destination to fetch hotels for
+  final String title; // Title displayed on the page (e.g., country or city)
 
   const NewPage({super.key, required this.destinationId, required this.title});
 
   @override
-  State<NewPage> createState() => _NewPageState();
+  State<NewPage> createState() => _NewPageState(); // Create mutable state
 }
+// End: NewPage Widget
 
+// Start: _NewPageState Class
 class _NewPageState extends State<NewPage> {
-  int nightCount = 1;
-  bool breakfast = true;
-  bool seaView = false;
-  bool spa = false;
-  List<Map<String, dynamic>> hotels = [];
-  Map<String, dynamic>? selectedHotel;
-  bool isLoading = true;
+  // State variables
+  int nightCount = 1; // Number of nights selected
+  bool breakfast = true; // Whether breakfast is added
+  bool seaView = false; // Whether sea view is added
+  bool spa = false; // Whether spa is added
+  List<Map<String, dynamic>> hotels = []; // List of hotels fetched from API
+  Map<String, dynamic>? selectedHotel; // Currently selected hotel
+  bool isLoading = true; // Loading state for API call
 
+  // initState runs when the page is first created
   @override
   void initState() {
     super.initState();
-    fetchHotels();
+    fetchHotels(); // Fetch hotel data from API
   }
 
+  // Start: Fetch hotels from backend API
   Future<void> fetchHotels() async {
     try {
+      // Make GET request using the destination ID
       final response = await http.get(
         Uri.parse("http://localhost:5000/api/hotels/${widget.destinationId}"),
       );
 
       if (response.statusCode == 200) {
-        final List data = json.decode(response.body);
+        // Successful response
+        final List data = json.decode(response.body); // Decode JSON array
 
         setState(() {
           hotels = data
@@ -52,17 +62,19 @@ class _NewPageState extends State<NewPage> {
                 },
               )
               .toList();
-          if (hotels.isNotEmpty) selectedHotel = hotels[0];
-          isLoading = false;
+          if (hotels.isNotEmpty) selectedHotel = hotels[0]; // Default selection
+          isLoading = false; // Stop loading spinner
         });
       } else {
-        setState(() => isLoading = false);
+        setState(() => isLoading = false); // Stop loading if error
       }
     } catch (e) {
-      setState(() => isLoading = false);
+      setState(() => isLoading = false); // Stop loading if exception
     }
   }
+  // End: Fetch hotels
 
+  // Start: Calculate total price including add-ons
   double getTotalPrice() {
     if (selectedHotel == null) return 0;
     double basePrice = double.tryParse(selectedHotel!["price"]) ?? 0;
@@ -70,27 +82,30 @@ class _NewPageState extends State<NewPage> {
     if (breakfast) extras += 25;
     if (seaView) extras += 40;
     if (spa) extras += 35;
-    return (basePrice + extras) * nightCount;
+    return (basePrice + extras) * nightCount; // Total price
   }
+  // End: Calculate total price
 
+  // Start: Build UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: isLoading
           ? Center(
+              // Show spinner while loading
               child: CircularProgressIndicator(
                 color: Theme.of(context).colorScheme.primary,
               ),
             )
           : CustomScrollView(
               slivers: [
-                // Hero Image Sliver
+                // Start: Hero Image with AppBar
                 SliverAppBar(
-                  expandedHeight: 300,
+                  expandedHeight: 300, // Height when expanded
                   backgroundColor: Colors.white,
                   elevation: 0,
-                  pinned: true,
+                  pinned: true, // AppBar stays visible when scrolled
                   flexibleSpace: FlexibleSpaceBar(
                     background: Image.network(
                       selectedHotel?["image"] ??
@@ -99,6 +114,7 @@ class _NewPageState extends State<NewPage> {
                     ),
                   ),
                   leading: Container(
+                    // Back button styling
                     margin: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -111,7 +127,7 @@ class _NewPageState extends State<NewPage> {
                       ],
                     ),
                     child: IconButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(context), // Go back
                       icon: Icon(
                         Icons.arrow_back_rounded,
                         color: Colors.grey.shade800,
@@ -119,6 +135,7 @@ class _NewPageState extends State<NewPage> {
                     ),
                   ),
                   actions: [
+                    // Favorite button
                     Container(
                       margin: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -141,21 +158,22 @@ class _NewPageState extends State<NewPage> {
                     ),
                   ],
                 ),
+                // End: Hero Image with AppBar
 
-                // Content Sliver
+                // Start: Content Section
                 SliverToBoxAdapter(
                   child: Container(
                     decoration: const BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(30),
+                        top: Radius.circular(30), // Rounded top corners
                       ),
                     ),
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Hotel Name & Rating
+                        // Hotel Name and Rating Row
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -170,6 +188,7 @@ class _NewPageState extends State<NewPage> {
                               ),
                             ),
                             Container(
+                              // Rating badge
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 6,
@@ -202,7 +221,7 @@ class _NewPageState extends State<NewPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          widget.title,
+                          widget.title, // Destination title
                           style: TextStyle(
                             fontSize: 16,
                             color: Theme.of(context).colorScheme.primary,
@@ -211,12 +230,13 @@ class _NewPageState extends State<NewPage> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Hotel Selection
+                        // Start: Room Selection Section
                         _buildSection(
                           'Select Your Room',
                           Column(
                             children: hotels.map((hotel) {
                               return OpenContainer(
+                                // Smooth container animation
                                 closedElevation: 0,
                                 closedBuilder: (context, action) {
                                   return Container(
@@ -239,6 +259,7 @@ class _NewPageState extends State<NewPage> {
                                       ),
                                     ),
                                     child: ListTile(
+                                      // Hotel details
                                       onTap: () {
                                         setState(() => selectedHotel = hotel);
                                       },
@@ -280,16 +301,16 @@ class _NewPageState extends State<NewPage> {
                                     ),
                                   );
                                 },
-                                openBuilder: (context, action) {
-                                  return const SizedBox();
-                                },
+                                openBuilder: (context, action) =>
+                                    const SizedBox(),
                               );
                             }).toList(),
                           ),
                         ),
                         const SizedBox(height: 25),
+                        // End: Room Selection
 
-                        // Nights Counter
+                        // Start: Duration Section
                         _buildSection(
                           'Duration',
                           Row(
@@ -305,6 +326,7 @@ class _NewPageState extends State<NewPage> {
                               Row(
                                 children: [
                                   IconButton(
+                                    // Decrease nights
                                     onPressed: nightCount > 1
                                         ? () => setState(() => nightCount--)
                                         : null,
@@ -324,6 +346,7 @@ class _NewPageState extends State<NewPage> {
                                   ),
                                   const SizedBox(width: 12),
                                   IconButton(
+                                    // Increase nights
                                     onPressed: () =>
                                         setState(() => nightCount++),
                                     style: IconButton.styleFrom(
@@ -342,8 +365,9 @@ class _NewPageState extends State<NewPage> {
                           ),
                         ),
                         const SizedBox(height: 25),
+                        // End: Duration Section
 
-                        // Add-ons
+                        // Start: Add-ons Section
                         _buildSection(
                           'Add-ons',
                           Column(
@@ -376,8 +400,9 @@ class _NewPageState extends State<NewPage> {
                           ),
                         ),
                         const SizedBox(height: 30),
+                        // End: Add-ons Section
 
-                        // Price Summary
+                        // Start: Price Breakdown Section
                         _buildSection(
                           'Price Breakdown',
                           Column(
@@ -429,8 +454,9 @@ class _NewPageState extends State<NewPage> {
                           ),
                         ),
                         const SizedBox(height: 40),
+                        // End: Price Breakdown Section
 
-                        // Book Button
+                        // Start: Book Now Button
                         OpenContainer(
                           closedElevation: 0,
                           closedBuilder: (context, action) {
@@ -488,15 +514,19 @@ class _NewPageState extends State<NewPage> {
                           },
                           openBuilder: (context, action) => const SizedBox(),
                         ),
+                        // End: Book Now Button
                       ],
                     ),
                   ),
                 ),
+                // End: Content Section
               ],
             ),
     );
   }
+  // End: Build UI
 
+  // Start: Helper widget for section titles
   Widget _buildSection(String title, Widget child) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,7 +544,9 @@ class _NewPageState extends State<NewPage> {
       ],
     );
   }
+  // End: _buildSection
 
+  // Start: Helper widget for add-ons
   Widget _buildAddon(
     String title,
     String price,
@@ -583,7 +615,9 @@ class _NewPageState extends State<NewPage> {
       ),
     );
   }
+  // End: _buildAddon
 
+  // Start: Helper for price row
   Widget _buildPriceRow(String label, String price) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -602,7 +636,9 @@ class _NewPageState extends State<NewPage> {
       ),
     );
   }
+  // End: _buildPriceRow
 
+  // Start: Show booking confirmation modal
   void _showBookingConfirmation(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -659,7 +695,6 @@ class _NewPageState extends State<NewPage> {
                       ),
                     ),
                     const SizedBox(height: 30),
-
                     // Title
                     const Text(
                       'Booking Confirmed!',
@@ -670,7 +705,6 @@ class _NewPageState extends State<NewPage> {
                       ),
                     ),
                     const SizedBox(height: 15),
-
                     // Details
                     Text(
                       '${selectedHotel?["name"] ?? "Luxury Resort"} • $nightCount night${nightCount > 1 ? "s" : ""}',
@@ -680,7 +714,6 @@ class _NewPageState extends State<NewPage> {
                       ),
                     ),
                     const SizedBox(height: 30),
-
                     // Price
                     Text(
                       '\$${getTotalPrice().toStringAsFixed(2)}',
@@ -691,8 +724,7 @@ class _NewPageState extends State<NewPage> {
                       ),
                     ),
                     const SizedBox(height: 40),
-
-                    // Buttons
+                    // Buttons: Continue or Done
                     Row(
                       children: [
                         Expanded(
@@ -754,4 +786,8 @@ class _NewPageState extends State<NewPage> {
       },
     );
   }
+
+  // End: _showBookingConfirmation
 }
+
+// End: _NewPageState Class

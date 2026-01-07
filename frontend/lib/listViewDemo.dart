@@ -1,51 +1,58 @@
-import 'package:flutter/material.dart';
-import 'contact.dart';
-import 'newPage.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart'; // Start: Flutter UI components (widgets like Scaffold, Text, Icon, etc.)
+import 'contact.dart'; // ContactPage navigation (opens a separate page)
+import 'newPage.dart'; // NewPage for detailed destination view
+import 'dart:convert'; // JSON decoding for API response
+import 'package:http/http.dart' as http; // HTTP requests to fetch data
+// End Imports
 
+// Start: Main Stateful Widget
 class ListViewDemo extends StatefulWidget {
   const ListViewDemo({super.key});
 
   @override
   State<ListViewDemo> createState() => _ListViewDemoState();
 }
+// End: Main Stateful Widget
 
+// Start: State class
 class _ListViewDemoState extends State<ListViewDemo> {
-  List<Map<String, dynamic>> places = [];
-  bool isLoading = true;
-  int selectedCategory = 0;
+  // Start: State Variables
+  List<Map<String, dynamic>> places =
+      []; // Stores the list of destinations from API
+  bool isLoading = true; // Shows loading spinner while fetching data
+  int selectedCategory = 0; // Tracks which category filter is selected
   final List<String> categories = [
-    'Hotels',
-    'Flights',
-    'Vacation',
-    'Car',
-    'Activities',
+    // Quick filter names
+    'Hotels', 'Flights', 'Vacation', 'Car', 'Activities',
   ];
   final List<IconData> categoryIcons = [
-    Icons.hotel,
-    Icons.flight,
-    Icons.beach_access,
-    Icons.directions_car,
-    Icons.local_activity,
+    // Icons for quick filter buttons
+    Icons.hotel, Icons.flight, Icons.beach_access,
+    Icons.directions_car, Icons.local_activity,
   ];
+  // End: State Variables
 
+  // Start: Initialize and fetch data
   @override
   void initState() {
     super.initState();
-    fetchDestinations();
+    fetchDestinations(); // Fetch API data as soon as the page loads
   }
 
+  // Start: Fetch destinations from backend
   Future<void> fetchDestinations() async {
     try {
+      // HTTP GET request to fetch destinations from backend API
       final response = await http.get(
         Uri.parse("http://localhost:5000/api/destinations"),
       );
 
       if (response.statusCode == 200) {
-        final List data = json.decode(response.body);
+        // Success
+        final List data = json.decode(response.body); // Decode JSON response
 
         setState(() {
+          // Map API data into a usable list of maps
           places = data
               .map(
                 (item) => {
@@ -54,7 +61,7 @@ class _ListViewDemoState extends State<ListViewDemo> {
                   "price": item["price"]?.toString() ?? "0",
                   "image":
                       item["image_url"] ??
-                      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&auto=format&fit=crop",
+                      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&auto=format&fit=crop", // Default image
                   "rating": (item["rating"] ?? 4.5).toDouble(),
                   "reviews": item["reviews"] ?? 120,
                   "category": item["category"] ?? "Beach",
@@ -63,30 +70,32 @@ class _ListViewDemoState extends State<ListViewDemo> {
                 },
               )
               .toList();
-          isLoading = false;
+          isLoading = false; // Stop showing spinner
         });
       } else {
-        setState(() => isLoading = false);
+        setState(() => isLoading = false); // Stop spinner on error
       }
     } catch (e) {
-      setState(() => isLoading = false);
+      setState(() => isLoading = false); // Stop spinner on network failure
     }
   }
+  // End: Fetch destinations
 
+  // Start: Build UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const BouncingScrollPhysics(), // iOS-style scroll physics
           slivers: [
-            // iOS Style App Bar
+            // Start: App Bar
             SliverAppBar(
               backgroundColor: Colors.white,
               elevation: 0,
               floating: false,
-              pinned: true,
+              pinned: true, // App bar sticks at the top
               expandedHeight: 80,
               flexibleSpace: FlexibleSpaceBar(
                 collapseMode: CollapseMode.pin,
@@ -131,6 +140,7 @@ class _ListViewDemoState extends State<ListViewDemo> {
               actions: [
                 IconButton(
                   onPressed: () {
+                    // Navigate to Contact Page
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const ContactPage()),
@@ -152,8 +162,9 @@ class _ListViewDemoState extends State<ListViewDemo> {
                 ),
               ],
             ),
+            // End: App Bar
 
-            // Search Section
+            // Start: Search & Quick Filters Section
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -175,7 +186,7 @@ class _ListViewDemoState extends State<ListViewDemo> {
                   ),
                   child: Column(
                     children: [
-                      // Search Bar
+                      // Search Bar (user can type destination)
                       Padding(
                         padding: const EdgeInsets.all(16),
                         child: Container(
@@ -218,14 +229,13 @@ class _ListViewDemoState extends State<ListViewDemo> {
                                   Icons.tune,
                                   color: Colors.white,
                                   size: 18,
-                                ),
+                                ), // Filter options icon
                               ),
                             ],
                           ),
                         ),
                       ),
-
-                      // Quick Filters
+                      // Quick Filters (horizontal list of categories)
                       SizedBox(
                         height: 100,
                         child: ListView.builder(
@@ -286,8 +296,9 @@ class _ListViewDemoState extends State<ListViewDemo> {
                 ),
               ),
             ),
+            // End: Search & Quick Filters
 
-            // Trending Section
+            // Start: Trending Section Header
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -306,7 +317,7 @@ class _ListViewDemoState extends State<ListViewDemo> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () {}, // Could navigate to full list
                       child: const Text(
                         'See all',
                         style: TextStyle(
@@ -320,8 +331,9 @@ class _ListViewDemoState extends State<ListViewDemo> {
                 ),
               ),
             ),
+            // End: Trending Section Header
 
-            // Loading State
+            // Start: Loading State
             if (isLoading)
               SliverFillRemaining(
                 child: Center(
@@ -334,7 +346,7 @@ class _ListViewDemoState extends State<ListViewDemo> {
                       ),
                       const SizedBox(height: 16),
                       const Text(
-                        'Finding best stays...',
+                        'Finding best stays...', // Feedback while fetching data
                         style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                     ],
@@ -342,30 +354,31 @@ class _ListViewDemoState extends State<ListViewDemo> {
                 ),
               )
             else
-              // Destinations Grid
+              // Start: Destinations Grid
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverGrid(
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 1,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 0,
-                    childAspectRatio: 1.2,
+                    crossAxisCount: 1, // Single column
+                    mainAxisSpacing: 16, // Vertical spacing
+                    crossAxisSpacing: 0, // No horizontal spacing
+                    childAspectRatio: 1.2, // Card height ratio
                   ),
                   delegate: SliverChildBuilderDelegate((context, index) {
-                    final place = places[index];
-                    return _buildDestinationCard(context, place);
+                    final place = places[index]; // Each destination
+                    return _buildDestinationCard(context, place); // Build card
                   }, childCount: places.length),
                 ),
               ),
+            // End: Destinations Grid
 
-            // Bottom Padding
+            // Bottom padding
             const SliverToBoxAdapter(child: SizedBox(height: 80)),
           ],
         ),
       ),
 
-      // Bottom Navigation Bar (iOS Style)
+      // Start: Bottom Navigation Bar
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
@@ -388,9 +401,12 @@ class _ListViewDemoState extends State<ListViewDemo> {
           ),
         ),
       ),
+      // End: Bottom Navigation Bar
     );
   }
+  // End: Build UI
 
+  // Start: Bottom Nav Item Builder
   Widget _buildNavItem(IconData icon, String label, bool isActive) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -412,13 +428,16 @@ class _ListViewDemoState extends State<ListViewDemo> {
       ],
     );
   }
+  // End: Bottom Nav Item Builder
 
+  // Start: Destination Card Builder
   Widget _buildDestinationCard(
     BuildContext context,
     Map<String, dynamic> place,
   ) {
     return GestureDetector(
       onTap: () {
+        // Navigate to destination detail page
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -443,7 +462,7 @@ class _ListViewDemoState extends State<ListViewDemo> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image with multiple badges
+            // Start: Image with badges
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
@@ -457,8 +476,7 @@ class _ListViewDemoState extends State<ListViewDemo> {
                     height: 180,
                     fit: BoxFit.cover,
                   ),
-
-                  // Top badges
+                  // Top Badge ("Genius Deal")
                   Positioned(
                     top: 12,
                     left: 12,
@@ -481,8 +499,7 @@ class _ListViewDemoState extends State<ListViewDemo> {
                       ),
                     ),
                   ),
-
-                  // Rating badge
+                  // Rating Badge
                   Positioned(
                     top: 12,
                     right: 12,
@@ -527,8 +544,7 @@ class _ListViewDemoState extends State<ListViewDemo> {
                       ),
                     ),
                   ),
-
-                  // Distance badge at bottom
+                  // Distance Badge
                   Positioned(
                     bottom: 12,
                     left: 12,
@@ -564,14 +580,14 @@ class _ListViewDemoState extends State<ListViewDemo> {
                 ],
               ),
             ),
+            // End: Image with badges
 
-            // Content
+            // Start: Card Content
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Hotel Name and Price
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -598,15 +614,11 @@ class _ListViewDemoState extends State<ListViewDemo> {
                     ],
                   ),
                   const SizedBox(height: 4),
-
-                  // Category and location
                   Text(
                     '${place["category"]} Hotel • Central location',
                     style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 12),
-
-                  // Amenities
                   Row(
                     children: [
                       Icon(Icons.wifi, size: 16, color: Colors.grey.shade600),
@@ -645,8 +657,6 @@ class _ListViewDemoState extends State<ListViewDemo> {
                     ],
                   ),
                   const SizedBox(height: 16),
-
-                  // Book button
                   Container(
                     width: double.infinity,
                     height: 44,
@@ -668,9 +678,14 @@ class _ListViewDemoState extends State<ListViewDemo> {
                 ],
               ),
             ),
+            // End: Card Content
           ],
         ),
       ),
     );
   }
+
+  // End: Destination Card Builder
 }
+
+// End: State Class

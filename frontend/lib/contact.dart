@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:animations/animations.dart';
+// Material UI components (Scaffold, AppBar, Buttons, TextFields)
 
+import 'dart:convert';
+// Used to convert Dart Map -> JSON when sending data to backend
+
+import 'package:http/http.dart' as http;
+// Used to send HTTP requests (POST request to server)
+
+import 'package:animations/animations.dart';
+// Provides smooth Material animations (OpenContainer)
+
+/// ==============================
+/// CONTACT PAGE WIDGET
+/// ==============================
 class ContactPage extends StatefulWidget {
   const ContactPage({super.key});
 
@@ -10,19 +20,33 @@ class ContactPage extends StatefulWidget {
   State<ContactPage> createState() => _ContactPageState();
 }
 
+/// ==============================
+/// PAGE STATE (LOGIC + UI)
+/// ==============================
 class _ContactPageState extends State<ContactPage> {
+  // Controllers hold what the user types in the text fields
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
+
+  // Controls loading state (spinner + disabled button)
   bool isLoading = false;
+
+  // Used to validate the form
   final _formKey = GlobalKey<FormState>();
 
+  /// ==============================
+  /// SEND MESSAGE FUNCTION
+  /// ==============================
   Future<void> sendMessage() async {
+    // If validation fails, stop here
     if (!_formKey.currentState!.validate()) return;
 
+    // Show loading spinner
     setState(() => isLoading = true);
 
     try {
+      // Send POST request to backend
       final response = await http.post(
         Uri.parse("http://localhost:5000/api/contact"),
         headers: {"Content-Type": "application/json"},
@@ -33,10 +57,14 @@ class _ContactPageState extends State<ContactPage> {
         }),
       );
 
+      // Stop loading spinner
       setState(() => isLoading = false);
 
+      // Success response
       if (response.statusCode == 200) {
         _showSuccessDialog();
+
+        // Clear form fields
         _nameController.clear();
         _emailController.clear();
         _messageController.clear();
@@ -49,11 +77,14 @@ class _ContactPageState extends State<ContactPage> {
     }
   }
 
+  /// ==============================
+  /// SUCCESS BOTTOM SHEET
+  /// ==============================
   void _showSuccessDialog() {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
         return Container(
           margin: const EdgeInsets.all(20),
@@ -62,26 +93,20 @@ class _ContactPageState extends State<ContactPage> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 30,
-                spreadRadius: 5,
-              ),
+              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 30),
             ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Green circle with check icon
               Container(
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.green.shade50,
                   gradient: const LinearGradient(
                     colors: [Color(0xFF4ADE80), Color(0xFF22C55E)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
                   ),
                 ),
                 child: const Icon(
@@ -90,41 +115,38 @@ class _ContactPageState extends State<ContactPage> {
                   size: 50,
                 ),
               ),
+
               const SizedBox(height: 24),
+
+              // Title text
               const Text(
                 'Message Sent!',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black87,
-                ),
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
               ),
+
               const SizedBox(height: 12),
+
+              // Subtitle text
               Text(
                 'Our team will get back to you within 24 hours',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                style: TextStyle(color: Colors.grey.shade600),
               ),
+
               const SizedBox(height: 30),
+
+              // Close button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
                   ),
-                  child: const Text(
-                    'Continue Exploring',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: const Text('Continue Exploring'),
                 ),
               ),
             ],
@@ -134,6 +156,9 @@ class _ContactPageState extends State<ContactPage> {
     );
   }
 
+  /// ==============================
+  /// ERROR DIALOG
+  /// ==============================
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -151,36 +176,39 @@ class _ContactPageState extends State<ContactPage> {
     );
   }
 
+  /// ==============================
+  /// MAIN UI
+  /// ==============================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
+      /// -------- APP BAR --------
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
+        backgroundColor: Colors.white,
         leading: IconButton(
-          onPressed: () => Navigator.pop(context),
           icon: Icon(
             Icons.arrow_back_ios_new_rounded,
             color: Colors.grey.shade800,
           ),
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Contact Us',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            color: Colors.black87,
-          ),
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
         ),
       ),
+
+      /// -------- FORM BODY --------
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
-              // Hero Image
+              /// HERO CARD
               Container(
                 height: 200,
                 margin: const EdgeInsets.only(bottom: 30),
@@ -191,173 +219,77 @@ class _ContactPageState extends State<ContactPage> {
                       Theme.of(context).colorScheme.primary,
                       Theme.of(context).colorScheme.secondary,
                     ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withOpacity(0.3),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                    ),
-                  ],
                 ),
                 child: Stack(
-                  children: [
+                  children: const [
+                    Positioned(
+                      left: 20,
+                      bottom: 20,
+                      child: Text(
+                        '24/7 Support\nWe\'re always here to help you',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
                     Positioned(
                       right: 20,
                       bottom: 20,
                       child: Icon(
                         Icons.support_agent_rounded,
-                        color: Colors.white.withOpacity(0.8),
                         size: 80,
-                      ),
-                    ),
-                    const Positioned(
-                      left: 20,
-                      bottom: 20,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '24/7 Support',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'We\'re always here to help you',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ],
+                        color: Colors.white70,
                       ),
                     ),
                   ],
                 ),
               ),
 
-              // Form Fields
+              /// INPUT FIELDS
               _buildTextField(
                 _nameController,
                 'Full Name',
-                Icons.person_2_rounded,
-                (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  return null;
-                },
+                Icons.person,
+                (v) => v!.isEmpty ? 'Please enter your name' : null,
               ),
+
               const SizedBox(height: 20),
-              _buildTextField(
-                _emailController,
-                'Email Address',
-                Icons.email_rounded,
-                (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
+
+              _buildTextField(_emailController, 'Email Address', Icons.email, (
+                v,
+              ) {
+                if (v!.isEmpty) return 'Please enter your email';
+                if (!v.contains('@')) return 'Invalid email';
+                return null;
+              }),
+
               const SizedBox(height: 20),
+
               _buildTextField(
                 _messageController,
                 'Your Message',
-                Icons.message_rounded,
-                (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your message';
-                  }
-                  if (value.length < 10) {
-                    return 'Message should be at least 10 characters';
-                  }
-                  return null;
-                },
+                Icons.message,
+                (v) => v!.length < 10
+                    ? 'Message must be at least 10 characters'
+                    : null,
                 maxLines: 5,
               ),
+
               const SizedBox(height: 40),
 
-              // Submit Button
+              /// SUBMIT BUTTON WITH ANIMATION
               OpenContainer(
                 closedElevation: 0,
                 closedColor: Colors.transparent,
                 closedBuilder: (context, action) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Theme.of(context).colorScheme.primary,
-                          Theme.of(context).colorScheme.secondary,
-                        ],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withOpacity(0.4),
-                          blurRadius: 15,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: isLoading ? null : sendMessage,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 20,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (isLoading)
-                            const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          else
-                            const Icon(Icons.send_rounded, size: 20),
-                          const SizedBox(width: 12),
-                          Text(
-                            isLoading ? 'Sending...' : 'Send Message',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  return ElevatedButton(
+                    onPressed: isLoading ? null : sendMessage,
+                    child: isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('Send Message'),
                   );
                 },
                 openBuilder: (context, action) {
-                  return const SizedBox(); // Empty for animation only
+                  return const SizedBox();
                 },
               ),
             ],
@@ -367,6 +299,9 @@ class _ContactPageState extends State<ContactPage> {
     );
   }
 
+  /// ==============================
+  /// REUSABLE TEXT FIELD
+  /// ==============================
   Widget _buildTextField(
     TextEditingController controller,
     String label,
@@ -380,33 +315,12 @@ class _ContactPageState extends State<ContactPage> {
       maxLines: maxLines,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(
-          color: Colors.grey.shade600,
-          fontWeight: FontWeight.w500,
-        ),
-        prefixIcon: Icon(icon, color: Theme.of(context).colorScheme.primary),
+        prefixIcon: Icon(icon),
         filled: true,
-        fillColor: Colors.grey.shade50,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
           borderSide: BorderSide.none,
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.primary,
-            width: 2,
-          ),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 18,
-        ),
-      ),
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Colors.black87,
       ),
     );
   }
